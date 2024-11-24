@@ -8,11 +8,7 @@ type Customer = {
   custumerId: number;
   email: string;
   name: string;
-  phone: {
-    phoneNumber: string;
-    masked: string;
-    numbersOnly: string;
-  };
+  phone: number;
   document: {
     number: string;
     type: string;
@@ -28,7 +24,7 @@ type Customer = {
   };
 };
 
-type Order = {
+export type Order = {
   message: string | number | readonly string[] | undefined;
   id?: number;
   uuid?: string;

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GitBranch, Plus } from 'lucide-react';
+import { getOrdersFlows } from '@/shared/services/OrferFlow';
 
 interface Flow {
   id: string;
@@ -26,8 +27,25 @@ const mockFlows: Flow[] = [
 ];
 
 export default function OrderFlow() {
+  const [ordersFlows, setOrdersFlows] = useState<Flow[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingFlow, setEditingFlow] = useState<Flow | null>(null);
+
+
+  useEffect(() => {
+    fetchOrdersFlows();
+  }, []);
+
+  const fetchOrdersFlows= async () => {
+    try {
+      const ordersFlows = await getOrdersFlows("18");
+      setOrdersFlows(ordersFlows);
+    } catch (error: any) {
+     // setError("Erro ao carregar os pedidos");
+    } finally {
+     // setLoading(false);
+    }
+  };
 
   const handleSaveFlow = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +53,8 @@ export default function OrderFlow() {
     setShowAddModal(false);
     setEditingFlow(null);
   };
+
+  
 
   return (
     <div>
@@ -50,7 +70,7 @@ export default function OrderFlow() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockFlows.map((flow) => (
+        {ordersFlows.map((flow) => (
           <div
             key={flow.id}
             className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"

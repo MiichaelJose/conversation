@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, Plus, Edit2, Trash2 } from 'lucide-react';
+import { getUsers } from '@/shared/services/User';
 
 interface UserData {
   id: string;
@@ -26,8 +27,25 @@ const mockUsers: UserData[] = [
   },
 ];
 
-function Users() {
+export default function Users() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [users, setUsers] = useState<UserData[]>([]);
+
+  
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const users = await getUsers();
+      setUsers(users);
+    } catch (error: any) {
+     // setError("Erro ao carregar os pedidos");
+    } finally {
+     // setLoading(false);
+    }
+  };
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +88,7 @@ function Users() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {mockUsers.map((user) => (
+            {users.map((user) => (
               <tr key={user.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -182,5 +200,3 @@ function Users() {
     </div>
   );
 }
-
-export default Users;

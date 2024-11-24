@@ -8,8 +8,8 @@ interface Campaign {
   type: string;
   paymentMethod: string;
   status: string;
-  totalContacts: number;
-  convertedContacts: number;
+  total: number;
+  converted: number;
 }
 
 // const mockCampaigns: Campaign[] = [
@@ -166,11 +166,11 @@ function Campaigns() {
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <div className="text-center p-2 bg-gray-50 rounded">
                     <p className="text-sm text-gray-600">Total</p>
-                    <p className="font-semibold">{campaign.totalContacts}</p>
+                    <p className="font-semibold">{campaign.total}</p>
                   </div>
                   <div className="text-center p-2 bg-gray-50 rounded">
                     <p className="text-sm text-gray-600">Convertidos</p>
-                    <p className="font-semibold">{campaign.convertedContacts}</p>
+                    <p className="font-semibold">{campaign.converted}</p>
                   </div>
                 </div>
               </div>

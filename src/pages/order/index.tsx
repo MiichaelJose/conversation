@@ -1,68 +1,149 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MessageCircle, Edit2 } from 'lucide-react';
-import axios from 'axios';
+import { getOrders, updateMessage } from '@/shared/services/Order';
 
-interface Order {
-  id: string;
-  productName: string;
-  customerName: string;
-  customerPhone: string;
-  purchaseDate: string;
-  status: string;
-  observation: string;
-  whatsappClicks: number;
-  linkClicks: number;
-}
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Skeleton } from '@/components/ui/skeleton';
+import { Order } from '@/shared/types/OrdersTypes';
+import { getCampaigns } from '@/shared/services/Campaign';
 
-const mockOrders: Order[] = [
-  {
-    id: '1',
-    productName: 'Smartphone XYZ',
-    customerName: 'João Silva',
-    customerPhone: '5511999999999',
-    purchaseDate: '2024-03-15',
-    status: 'Aguardando Contato',
-    observation: 'Cliente solicitou entrega expressa',
-    whatsappClicks: 3,
-    linkClicks: 1,
-  },
-  // Add more mock orders...
-];
+
+// const mockOrders: Order[] = [
+//   {
+//     id: '1',
+//     productName: 'Smartphone XYZ',
+//     customerName: 'João Silva',
+//     customerPhone: '5511999999999',
+//     purchaseDate: '2024-03-15',
+//     status: 'Aguardando Contato',
+//     observation: 'Cliente solicitou entrega expressa',
+//     whatsappClicks: 3,
+//     linkClicks: 1,
+//   },
+// ];
 
 const statusFilters = [
-  'Aguardando Contato',
-  'Vencendo',
-  'Vencido',
-  'Acompanhamento',
-  'Em Contato',
-  'Convertidas'
+  {not_contacted: 'Aguardando Contato'},
+  {billet_due: 'Vencendo'},
+  {billet_expired: 'Vencido'},
+  {follow_up: 'Acompanhamento'},
+  {in_progress: 'Em Contato'},
+  {converted: 'Convertidas'}
 ];
+
+type FilterParams = {
+  contactStatus?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+}
+
 
 export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [previewMessage, setPreviewMessage] = useState<string>('');
-  const [selectedFilter, setSelectedFilter] = useState<string>('');
+  const [selectedFilter, setSelectedFilter] = useState<FilterParams>({
+    contactStatus: 'not_contacted',
+    paymentMethod: '',
+    paymentStatus: ''
+  });
   const [editingObservation, setEditingObservation] = useState<{id: string, observation: string} | null>(null);
+  const [saveObservation, setSaveObservation] = useState(false);
 
-  const handleWhatsAppClick = async (order: Order) => {
-    const message = `Olá ${order.customerName}, sobre seu pedido ${order.id}...`;
-    
+  const [orders, setOrders] = useState<any>([]);
+  const [pages, setPages] = useState(1);
+  const [activePages, setActivePages] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+
+  const [campaigns, setCampaigns] = useState<any>([]);
+
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true)
+    fetchOrders();
+    fetchOrdersCampaigns();
+  }, [selectedFilter, pages, saveObservation]);
+
+  useEffect(() => {
+    setPages(1)
+    setActivePages(1)
+  }, [selectedFilter]);
+
+
+  const fetchOrders = async () => {
     try {
-      await axios.post('/api/read', { orderId: order.id });
-      // Update click count locally
-      // In real implementation, you would fetch updated data from the server
-    } catch (error) {
-      console.error('Error updating click count:', error);
+      const data = await getOrders(selectedFilter, pages);
+      setOrders(data.orders)
+      setTotalPages(data.totalPages)
+      setTotalOrders(data.total)
+    } catch (error: any) {
+      // /setError("Erro ao carregar os pedidos");
+    } finally {
+      setLoading(false);
     }
-    
-    window.open(
-      `https://wa.me/${order.customerPhone}?text=${encodeURIComponent(message)}`,
-      '_blank'
-    );
   };
 
+  const fetchOrdersCampaigns = async () => {
+    try {
+        const campaigns: any = await getCampaignsWithClickStatus("18");
+        console.log(campaigns);
+        
+        setCampaigns(campaigns);
+    } catch (error: any) {
+      // setError("Erro ao carregar os pedidos");
+    } finally {
+      // setLoading(false);
+    }
+  }
+
+  const fetchCampaigns = async () => {
+    try {
+      const statusToTypeMap: Record<string, string> = {
+        not_contacted: "pending",
+        billet_due: "billet_due",
+        billet_expired: "billet_expired",
+        follow_up: "follow_up",
+        converted: "follow_up",
+      };
+  
+      const contactStatus = selectedFilter.contactStatus || "not_contacted";
+      const campaignType = statusToTypeMap[contactStatus];
+  
+      if (campaignType) {
+        const campaigns: any = await getCampaigns({ type: campaignType });
+        setCampaigns(campaigns);
+      }
+    } catch (error: any) {
+      // setError("Erro ao carregar os pedidos");
+    } finally {
+      // setLoading(false);
+    }
+  };
+  
+  // const handleWhatsAppClick = async (order: Order) => {
+  //   const message = `Olá ${order.customerName}, sobre seu pedido ${order.id}...`;
+  //   try {
+  //     await axios.post('/api/read', { orderId: order.id });
+  //   } catch (error) {
+  //     console.error('Error updating click count:', error);
+  //   }
+  //   window.open(
+  //     `https://wa.me/${order.customerPhone}?text=${encodeURIComponent(message)}`,
+  //     '_blank'
+  //   );
+  // };
+
   const showMessagePreview = (order: Order) => {
-    const message = `Olá ${order.customerName}, sobre seu pedido ${order.id}...`;
+    const message = `Olá ${order.customer.name}, sobre seu pedido ${order.id}...`;
     setPreviewMessage(message);
   };
 
@@ -74,38 +155,82 @@ export default function Orders() {
     if (!editingObservation) return;
     
     try {
-      // In real implementation, make API call to update observation
-      await axios.put(`/api/orders/${editingObservation.id}/observation`, {
-        observation: editingObservation.observation
-      });
+      await updateMessage(
+        editingObservation.id,
+        editingObservation.observation
+      )
       setEditingObservation(null);
     } catch (error) {
       console.error('Error updating observation:', error);
     }
   };
 
-  const filteredOrders = selectedFilter 
-    ? mockOrders.filter(order => order.status === selectedFilter)
-    : mockOrders;
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setPages(page);
+      setActivePages(page);
+    }
+  };
+
+  // const filteredOrders = selectedFilter 
+  //   ? mockOrders.filter(order => order.status === selectedFilter.contactStatus)
+  //   : mockOrders;
+
+  const paginations = () => {
+    const paginationNumbers = [];
+    
+    for (let i = 1; i <= totalPages; i++) {
+      paginationNumbers.push(i);
+    }
+  
+    return paginationNumbers.map((pageNumber) => (
+      <PaginationItem key={pageNumber}>
+        <PaginationLink
+          href="#"
+          onClick={(e) => {
+            e.preventDefault()
+            handlePageChange(pageNumber);
+          }}
+          className={`px-4 py-2 rounded ${
+            activePages === pageNumber
+              ? "bg-blue-500 text-white font-bold"
+              : "bg-gray-200 text-black"
+          }`}
+        >
+          {pageNumber}
+        </PaginationLink>
+      </PaginationItem>
+    ));
+  };
 
   return (
     <div className="relative">
       <div className="mb-6">
         <h2 className="text-2xl font-bold mb-4">Pedidos</h2>
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {statusFilters.map(filter => (
+        {statusFilters.map((filter) => {
+          const [tag, content] = Object.entries(filter)[0]; 
+          
+          return (
             <button
-              key={filter}
-              onClick={() => setSelectedFilter(filter === selectedFilter ? '' : filter)}
+              key={tag}
+              onClick={() =>
+                setSelectedFilter(
+                  tag === selectedFilter.contactStatus 
+                    ? selectedFilter 
+                    : { contactStatus: tag }
+                )
+              }
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
-                selectedFilter === filter
+                selectedFilter.contactStatus === tag
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {filter}
+              {content}
             </button>
-          ))}
+          );
+        })}
         </div>
       </div>
 
@@ -137,18 +262,42 @@ export default function Orders() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredOrders.map((order) => (
+            {totalOrders == 0 && !loading && (
+              <tr className="italic text-gray-400  rounded-md">
+                <td className="px-2 py-3 rounded-md" colSpan={6}>
+                  Nenhum pedido encontrado.
+                </td>
+              </tr>
+            )}
+
+            {loading && (
+              <tr className="  rounded-md">
+                <td className="px-2 py-3 rounded-md" colSpan={6}>
+                  <Skeleton className="w-full rounded-md" />
+                </td>
+              </tr>
+            )}
+
+            {orders.map((order: Order) => (
               <tr key={order.id}>
                 <td className="px-6 py-4 whitespace-nowrap">{order.id}</td>
-                <td className="px-6 py-4">{order.productName}</td>
-                <td className="px-6 py-4">{order.customerName}</td>
-                <td className="px-6 py-4">{order.purchaseDate}</td>
+                <td className="px-6 py-4">
+                  {order.products?.map((product: any) => 
+                    <p>{product.title}</p>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  {order.customer.name}
+                </td>
+                <td className="px-6 py-4">{order.orderCreatedAt}</td>
                 <td className="px-6 py-4">{order.status}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <span>{order.observation}</span>
+                    <span className='truncate w-8'>{order.message}</span>
                     <button
-                      onClick={() => setEditingObservation({ id: order.id, observation: order.observation })}
+                      onClick={() => {
+                        setEditingObservation({ id: order.id, observation: order.message })
+                      }}
                       className="text-gray-400 hover:text-gray-600"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -164,20 +313,26 @@ export default function Orders() {
                       Detalhes
                     </button>
                     <div className="relative">
-                      <button
-                        onMouseEnter={() => showMessagePreview(order)}
-                        onMouseLeave={hideMessagePreview}
-                        onClick={() => handleWhatsAppClick(order)}
-                        className="relative"
-                      >
-                        <MessageCircle className="w-6 h-6 text-green-500 hover:text-green-600" />
-                        <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                          {order.whatsappClicks}
-                        </span>
-                        <span className="absolute -bottom-2 -right-2 bg-gray-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                          {order.linkClicks}
-                        </span>
-                      </button>
+
+                    {campaigns.map((e: any) => {
+                        return (
+                          <button
+                          onMouseEnter={() => showMessagePreview(order)}
+                          onMouseLeave={hideMessagePreview}
+                          // onClick={() => handleWhatsAppClick(order)}
+                          className="relative"
+                        >
+                          <MessageCircle className="w-6 h-6 text-green-500 hover:text-green-600" />
+                          <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                            {e.id}
+                          </span>
+                          {/* <span className="absolute -bottom-2 -right-2 bg-gray-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                            {e.id}
+                          </span> */}
+                        </button>
+                        );
+                      })
+                    }
                     </div>
                   </div>
                 </td>
@@ -186,6 +341,34 @@ export default function Orders() {
           </tbody>
         </table>
       </div>
+
+      {totalPages !== 0 && (
+        <Pagination className="mt-5 text-bluesecundary">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious href="#" onClick={() => handlePageChange(1)} />
+            </PaginationItem>
+
+            {pages > 2 && (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )}
+
+            {paginations()}
+
+            {pages < totalPages - 1 && totalPages > 3 && (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )}
+
+            <PaginationItem>
+              <PaginationNext href="#" onClick={() => handlePageChange(totalPages)} />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       {previewMessage && (
         <div className="fixed bottom-4 left-4 max-w-sm">
@@ -198,7 +381,7 @@ export default function Orders() {
             </div>
           </div>
         </div>
-      )}
+      )} 
 
       {editingObservation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -221,7 +404,10 @@ export default function Orders() {
                 Cancelar
               </button>
               <button
-                onClick={handleObservationSave}
+                onClick={() => {
+                  handleObservationSave()
+                  setSaveObservation(!saveObservation)
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 Salvar
@@ -242,19 +428,22 @@ export default function Orders() {
               </div>
               <div>
                 <p className="font-semibold">Produto:</p>
-                <p>{selectedOrder.productName}</p>
+                <ul>{selectedOrder.products?.map((e) => 
+                  <li>{e.title}</li>
+                  )}
+                </ul>
               </div>
               <div>
                 <p className="font-semibold">Cliente:</p>
-                <p>{selectedOrder.customerName}</p>
+                <p>{selectedOrder.customer.name}</p>
               </div>
               <div>
                 <p className="font-semibold">Telefone:</p>
-                <p>{selectedOrder.customerPhone}</p>
+                <p>{selectedOrder.customer.phone}</p>
               </div>
               <div>
                 <p className="font-semibold">Data:</p>
-                <p>{selectedOrder.purchaseDate}</p>
+                <p>{selectedOrder.orderCreatedAt}</p>
               </div>
               <div>
                 <p className="font-semibold">Status:</p>
@@ -262,7 +451,7 @@ export default function Orders() {
               </div>
               <div className="col-span-2">
                 <p className="font-semibold">Observação:</p>
-                <p>{selectedOrder.observation}</p>
+                <p>{selectedOrder.message}</p>
               </div>
             </div>
             <div className="mt-6 flex justify-end">

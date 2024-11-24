@@ -7,16 +7,19 @@ interface FilterParams {
 }
 
 interface OrderResponse {
-  orders?: any;
-  total?: number;
-  totalPages?: number;
+  orders: any;
+  totalPages: number;
+  total: number;
 }
 
 export const getOrders = async (
   filters: FilterParams,
-  currentPage: number,
-  pageSize: number,
+  page: number,
 ): Promise<OrderResponse> => {
+
+  console.log(page);
+  console.log(filters);
+  
   const userParticipantId = 97; //localStorage.getItem("userParticipantId");
 
   if (!userParticipantId) {
@@ -28,7 +31,7 @@ export const getOrders = async (
   const params: Array<string> = [`userParticipantId=${encodeURIComponent(userParticipantId)}`];
 
   if (filters.contactStatus) {
-    params.push(`contactStatus=${encodeURIComponent(filters.contactStatus)}`);
+    params.push(`customerContactStatus=${encodeURIComponent(filters.contactStatus)}`);
   }
   if (filters.paymentMethod) {
     params.push(`paymentMethod=${encodeURIComponent(filters.paymentMethod)}`);
@@ -37,10 +40,13 @@ export const getOrders = async (
     params.push(`paymentStatus=${encodeURIComponent(filters.paymentStatus)}`);
   }
 
-  params.push(`page=${encodeURIComponent(currentPage)}`);
-  params.push(`pageSize=${encodeURIComponent(pageSize)}`);
+  params.push(`page=${encodeURIComponent(page)}`);
+  // params.push(`pageSize=${encodeURIComponent(pageSize)}`);
 
   const queryString = params.join("&");
+
+  console.log(queryString);
+  
 
   const response = await apiQueue
     .get(`${baseUrl}?${queryString}`)
@@ -58,4 +64,26 @@ export const getOrders = async (
   return response;
 };
 
-export default getOrders;
+
+export const updateMessage = async (
+  id: string,
+  message: string
+): Promise<any> => {
+  const baseUrl = "/webhook/orders/"+ id;
+
+
+  const response = await apiQueue
+    .patch(`${baseUrl}`, JSON.stringify({ message: message }))
+    .then((response) => {
+      return response.data;
+    })
+    .catch((error) => {
+      if (error.response.status == 400) {
+        return {
+          error: "Dados Incorretos",
+        };
+      }
+    });
+
+  return response;
+};

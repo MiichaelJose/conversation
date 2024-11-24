@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, Plus, Trash2, Users } from 'lucide-react';
+import { getGoogleCalendars } from '@/shared/services/GoogleCalendar';
 
 interface GoogleCalendar {
   id: string;
   name: string;
   email: string;
-  contactCount: number;
-  flowCount: number;
-  assignedTo: string | null;
-  telephone: string;
+  total_contacts: number;
+  flows: number;
+  operator: string | null;
+  phone: string;
 }
 
 interface User {
@@ -43,8 +44,24 @@ const mockCalendars: GoogleCalendar[] = [
 ];
 
 export default function GoogleCalendar() {
+  const [googleCalendars, setGoogleCalendars] = useState<GoogleCalendar[]>([])
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCalendar, setEditingCalendar] = useState<GoogleCalendar | null>(null);
+
+  useEffect(() => {
+    fetchCalendars();
+  }, []);
+
+  const fetchCalendars = async () => {
+    try {
+      const googleCalendars = await getGoogleCalendars("18");
+      setGoogleCalendars(googleCalendars);
+    } catch (error: any) {
+     // setError("Erro ao carregar os pedidos");
+    } finally {
+     // setLoading(false);
+    }
+  };
 
   const handleGoogleAuth = async () => {
     try {
@@ -76,7 +93,7 @@ export default function GoogleCalendar() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockCalendars.map((calendar) => (
+        {googleCalendars.map((calendar) => (
           <div
             key={calendar.id}
             className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
@@ -96,16 +113,16 @@ export default function GoogleCalendar() {
             <div className="mt-4 pt-4 border-t space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Contatos:</span>
-                <span className="font-semibold">{calendar.contactCount}</span>
+                <span className="font-semibold">{calendar.total_contacts}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Fluxos:</span>
-                <span className="font-semibold">{calendar.flowCount}</span>
+                <span className="font-semibold">{calendar.flows}</span>
               </div>
-              {calendar.assignedTo ? (
+              {calendar.operator ? (
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Vendedor:</span>
-                  <span className="font-semibold">{calendar.assignedTo}</span>
+                  <span className="font-semibold">{calendar.operator}</span>
                 </div>
               ) : (
                 <button
@@ -151,7 +168,7 @@ export default function GoogleCalendar() {
                   </label>
                   <input
                     type="tel"
-                    defaultValue={editingCalendar?.telephone}
+                    defaultValue={editingCalendar?.phone}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -170,7 +187,7 @@ export default function GoogleCalendar() {
                     Operador da Agenda
                   </label>
                   <select
-                    defaultValue={editingCalendar?.assignedTo || ''}
+                    defaultValue={editingCalendar?.operator || ''}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Selecione um operador</option>

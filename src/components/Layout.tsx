@@ -1,4 +1,3 @@
-import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { 
@@ -12,7 +11,7 @@ import {
   LogOut
 } from 'lucide-react';
 
-function Layout() {
+export default function Layout() {
   const logout = useAuthStore((state) => state.logout);
   
   return (
@@ -118,5 +117,3 @@ function Layout() {
     </div>
   );
 }
-
-export default Layout;
